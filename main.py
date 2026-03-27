@@ -3,6 +3,7 @@ import json
 import tempfile
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from supabase import create_client, Client
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -120,3 +121,7 @@ def get_recent_receipts(limit: int = 1000):
         return {"status": "success", "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/")
+async def serve_frontend():
+    return FileResponse("index.html")
