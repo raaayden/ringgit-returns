@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LHDN Receipt Vault</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen p-4 md:p-6">
+
+    <div class="max-w-5xl mx-auto space-y-6 md:space-y-8">
+        
+        <header class="text-center py-4 md:py-6">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Receipt Vault <span class="text-blue-600">🧾</span></h1>
+            <p class="text-slate-500 mt-2 text-sm md:text-base">Secure LHDN tax bookkeeping</p>
+        </header>
+
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-xl font-semibold mb-4">Add New Receipt</h2>
+            
+            <form id="uploadForm" class="space-y-5">
+                
+                <div>
+                    <label class="block mb-2 text-sm font-medium text-slate-900">Owner</label>
+                    <select id="ownerInput" required class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3">
+                        <option value="Raden">Raden</option>
+                        <option value="Anis">Anis</option>
+                        <option value="Joint/Household">Joint / Household</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 md:gap-4">
+                    <label for="cameraInput" class="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-blue-200 border-dashed rounded-xl cursor-pointer bg-blue-50 hover:bg-blue-100 transition">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <span class="text-3xl mb-1">📸</span>
+                            <p class="text-sm font-bold text-blue-700">Take Photo</p>
+                        </div>
+                        <input id="cameraInput" type="file" class="hidden" accept="image/*" capture="environment" />
+                    </label>
+
+                    <label for="fileInput" class="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <span class="text-3xl mb-1">📁</span>
+                            <p class="text-sm font-bold text-slate-600">Upload File</p>
+                        </div>
+                        <input id="fileInput" type="file" class="hidden" accept=".pdf, .png, .jpg, .jpeg" />
+                    </label>
+                </div>
+                
+                <div id="fileStatus" class="text-sm text-slate-600 hidden text-center font-medium bg-slate-100 py-2 rounded-lg"></div>
+
+                <button type="submit" id="submitBtn" class="w-full text-white bg-slate-900 hover:bg-slate-800 font-medium rounded-lg text-sm px-5 py-3.5 transition shadow-md">
+                    Process & Save to Vault
+                </button>
+            </form>
+
+            <div id="loading" class="hidden mt-4 text-center text-blue-600 font-medium animate-pulse">Analyzing receipt with Gemini...</div>
+            <div id="successMsg" class="hidden mt-4 p-4 text-sm text-green-800 rounded-lg bg-green-50 border border-green-200"></div>
+        </div>
+
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <h2 class="text-xl font-semibold">Tax Reporting</h2>
+                <div class="bg-blue-50 text-blue-800 px-4 py-2 rounded-lg font-bold text-lg border border-blue-100">
+                    Total: RM <span id="reportTotal">0.00</span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div class="col-span-2 md:col-span-1">
+                    <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Year</label>
+                    <select id="filterYear" class="w-full text-sm p-2 rounded border border-slate-300" onchange="applyFilters()">
+                        <option value="All">All Years</option>
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Owner</label>
+                    <select id="filterOwner" class="w-full text-sm p-2 rounded border border-slate-300" onchange="applyFilters()">
+                        <option value="All">All Owners</option>
+                        <option value="Raden">Raden</option>
+                        <option value="Anis">Anis</option>
+                        <option value="Joint/Household">Joint / Household</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Category</label>
+                    <select id="filterCategory" class="w-full text-sm p-2 rounded border border-slate-300" onchange="applyFilters()">
+                        <option value="All">All Categories</option>
+                        <option value="Lifestyle - Books/Internet/Sports">Lifestyle</option>
+                        <option value="Medical Expenses">Medical Expenses</option>
+                        <option value="Education">Education</option>
+                        <option value="Donations">Donations</option>
+                        <option value="Other/Uncategorized">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-sm text-slate-500" id="recordCount">0 records</p>
+                <button onclick="downloadCSV()" class="text-sm bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition">
+                    📥 Download CSV
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-100 rounded-lg">
+                <table class="w-full text-sm text-left text-slate-500 relative">
+                    <thead class="text-xs text-slate-700 uppercase bg-slate-100 sticky top-0 shadow-sm z-10">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 cursor-pointer hover:bg-slate-200" onclick="sortTable('date')">Date ↕️</th>
+                            <th scope="col" class="px-4 py-3">Owner</th>
+                            <th scope="col" class="px-4 py-3">Merchant</th>
+                            <th scope="col" class="px-4 py-3">Items</th>
+                            <th scope="col" class="px-4 py-3">Category</th>
+                            <th scope="col" class="px-4 py-3 text-right cursor-pointer hover:bg-slate-200" onclick="sortTable('amount')">Amount ↕️</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8000/api";
+        let allData = []; 
+        let filteredData = []; 
+        let sortAscending = false;
+        let activeFile = null; // Store the file whether it comes from camera or upload
+
+        // Handle File Selection (Both Camera and Upload)
+        function handleFileSelection(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            activeFile = file;
+            const statusDiv = document.getElementById('fileStatus');
+            
+            // If it's from the camera, it usually has a generic name like "image.jpg". 
+            // We'll show a friendly message.
+            if (e.target.id === 'cameraInput') {
+                statusDiv.innerHTML = `📸 <strong>Photo captured and ready to process!</strong>`;
+            } else {
+                statusDiv.innerHTML = `📁 Selected: <strong>${file.name}</strong>`;
+            }
+            statusDiv.classList.remove('hidden');
+        }
+
+        document.getElementById('cameraInput').addEventListener('change', handleFileSelection);
+        document.getElementById('fileInput').addEventListener('change', handleFileSelection);
+
+        // Handle Form Submission
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const owner = document.getElementById('ownerInput').value;
+            
+            if (!activeFile) {
+                alert("Please take a photo or upload a file first.");
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const successMsg = document.getElementById('successMsg');
+            
+            submitBtn.disabled = true;
+            loading.classList.remove('hidden');
+            successMsg.classList.add('hidden');
+
+            const formData = new FormData();
+            formData.append("file", activeFile);
+            formData.append("owner_name", owner);
+
+            try {
+                const response = await fetch(`${API_BASE}/upload-receipt/`, { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (response.ok) {
+                    successMsg.innerHTML = `<strong>✅ Saved to Vault!</strong><br> ${result.data.merchant_name} (RM ${result.data.total_amount})`;
+                    successMsg.classList.remove('hidden');
+                    
+                    // Reset everything
+                    document.getElementById('uploadForm').reset();
+                    activeFile = null;
+                    document.getElementById('fileStatus').classList.add('hidden');
+                    fetchReceipts(); // Refresh the dashboard
+                } else {
+                    alert("Error: " + result.detail);
+                }
+            } catch (error) {
+                alert("Connection failed. Is your FastAPI server running?");
+            } finally {
+                submitBtn.disabled = false;
+                loading.classList.add('hidden');
+            }
+        });
+
+        // Fetch Data from API
+        async function fetchReceipts() {
+            try {
+                const response = await fetch(`${API_BASE}/receipts/`);
+                const result = await response.json();
+                if (result.status === "success") {
+                    allData = result.data;
+                    applyFilters(); 
+                }
+            } catch (error) {
+                console.error("Failed to load receipts", error);
+            }
+        }
+
+        // Filter Logic
+        function applyFilters() {
+            const yearFilter = document.getElementById('filterYear').value;
+            const ownerFilter = document.getElementById('filterOwner').value;
+            const categoryFilter = document.getElementById('filterCategory').value;
+
+            filteredData = allData.filter(item => {
+                const itemYear = item.receipt_date ? item.receipt_date.substring(0, 4) : "Unknown";
+                const matchesYear = yearFilter === "All" || itemYear === yearFilter;
+                const matchesOwner = ownerFilter === "All" || item.owner_name === ownerFilter;
+                const matchesCategory = categoryFilter === "All" || (item.tax_category && item.tax_category.includes(categoryFilter.split(' ')[0]));
+                return matchesYear && matchesOwner && matchesCategory;
+            });
+            renderTable();
+        }
+
+        // Sorting Logic
+        function sortTable(column) {
+            sortAscending = !sortAscending;
+            filteredData.sort((a, b) => {
+                if (column === 'date') {
+                    const dateA = new Date(a.receipt_date || 0);
+                    const dateB = new Date(b.receipt_date || 0);
+                    return sortAscending ? dateA - dateB : dateB - dateA;
+                } else if (column === 'amount') {
+                    const amtA = parseFloat(a.total_amount) || 0;
+                    const amtB = parseFloat(b.total_amount) || 0;
+                    return sortAscending ? amtA - amtB : amtB - amtA;
+                }
+            });
+            renderTable();
+        }
+
+        // Render the Table & Calculate Totals
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            let total = 0;
+
+            tbody.innerHTML = filteredData.map(item => {
+                const amt = parseFloat(item.total_amount) || 0;
+                total += amt;
+                return `
+                    <tr class="bg-white border-b hover:bg-slate-50">
+                        <td class="px-4 py-3 whitespace-nowrap">${item.receipt_date || '-'}</td>
+                        <td class="px-4 py-3 font-semibold text-slate-700">${item.owner_name || '-'}</td>
+                        <td class="px-4 py-3 font-medium text-slate-900">${item.merchant_name || 'Unknown'}</td>
+                        <td class="px-4 py-3 text-slate-600 max-w-[150px] truncate" title="${item.purchased_items}">${item.purchased_items || '-'}</td>
+                        <td class="px-4 py-3">
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">${item.tax_category || 'Other'}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right font-bold text-slate-900">${amt.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('reportTotal').textContent = total.toFixed(2);
+            document.getElementById('recordCount').textContent = `${filteredData.length} records`;
+        }
+
+        // Generate CSV Report
+        function downloadCSV() {
+            if (filteredData.length === 0) return alert("No data to export!");
+            const headers = ["Date", "Owner", "Merchant", "Items", "Category", "Amount (RM)"];
+            const csvRows = [headers.join(",")];
+
+            filteredData.forEach(item => {
+                const row = [
+                    item.receipt_date || "",
+                    item.owner_name || "",
+                    `"${(item.merchant_name || "").replace(/"/g, '""')}"`,
+                    `"${(item.purchased_items || "").replace(/"/g, '""')}"`,
+                    `"${item.tax_category || ""}"`,
+                    item.total_amount || 0
+                ];
+                csvRows.push(row.join(","));
+            });
+
+            const csvString = csvRows.join("\n");
+            const blob = new Blob([csvString], { type: "text/csv" });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.setAttribute("hidden", "");
+            a.setAttribute("href", url);
+            a.setAttribute("download", `LHDN_Report.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // Initialize
+        fetchReceipts();
+    </script>
+</body>
+</html>
