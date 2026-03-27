@@ -53,7 +53,7 @@ The JSON keys must be exactly:
 
 # --- 2. THE PIPELINE ENDPOINT ---
 @app.post("/api/upload-receipt/")
-async def upload_receipt(file: UploadFile = File(...)):
+async def upload_receipt(file: UploadFile = File(...), owner_name: str = Form(...)):
     # Validate file type
     allowed_types = ["image/jpeg", "image/png", "image/jpg", "application/pdf"]
     if file.content_type not in allowed_types:

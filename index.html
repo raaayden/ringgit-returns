@@ -4,27 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LHDN Receipt Vault</title>
+    <script>
+        // Apply saved theme before page renders to avoid flash
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
-
-    
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen p-4 md:p-6">
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans antialiased min-h-screen p-4 md:p-6 transition-colors duration-200">
 
     <div class="max-w-5xl mx-auto space-y-6 md:space-y-8">
-        
-        <header class="text-center py-4 md:py-6">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Receipt Vault <span class="text-blue-600">🧾</span></h1>
-            <p class="text-slate-500 mt-2 text-sm md:text-base">Secure LHDN tax bookkeeping</p>
+
+        <header class="text-center py-4 md:py-6 relative">
+            <button id="themeToggle" onclick="toggleTheme()" class="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition text-lg" title="Toggle dark mode">
+                <span id="themeIcon">🌙</span>
+            </button>
+            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Receipt Vault <span class="text-blue-600">🧾</span></h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm md:text-base">Secure LHDN tax bookkeeping</p>
         </header>
 
-        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
-            <h2 class="text-xl font-semibold mb-4">Add New Receipt</h2>
-            
+        <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+            <h2 class="text-xl font-semibold mb-4 text-slate-900 dark:text-white">Add New Receipt</h2>
+
             <form id="uploadForm" class="space-y-5">
-                
+
                 <div>
-                    <label class="block mb-2 text-sm font-medium text-slate-900">Owner</label>
-                    <select id="ownerInput" required class="bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3">
+                    <label class="block mb-2 text-sm font-medium text-slate-900 dark:text-slate-200">Owner</label>
+                    <select id="ownerInput" required class="bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3">
                         <option value="Raden">Raden</option>
                         <option value="Anis">Anis</option>
                         <option value="Joint/Household">Joint / Household</option>
@@ -32,54 +42,54 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 md:gap-4">
-                    <label for="cameraInput" class="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-blue-200 border-dashed rounded-xl cursor-pointer bg-blue-50 hover:bg-blue-100 transition">
+                    <label for="cameraInput" class="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-blue-200 dark:border-blue-800 border-dashed rounded-xl cursor-pointer bg-blue-50 dark:bg-blue-950 hover:bg-blue-100 dark:hover:bg-blue-900 transition">
                         <div class="flex flex-col items-center justify-center pt-5 pb-6">
                             <span class="text-3xl mb-1">📸</span>
-                            <p class="text-sm font-bold text-blue-700">Take Photo</p>
+                            <p class="text-sm font-bold text-blue-700 dark:text-blue-400">Take Photo</p>
                         </div>
                         <input id="cameraInput" type="file" class="hidden" accept="image/*" capture="environment" />
                     </label>
 
-                    <label for="fileInput" class="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition">
+                    <label for="fileInput" class="flex flex-col items-center justify-center w-full h-28 md:h-32 border-2 border-slate-300 dark:border-slate-600 border-dashed rounded-xl cursor-pointer bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 transition">
                         <div class="flex flex-col items-center justify-center pt-5 pb-6">
                             <span class="text-3xl mb-1">📁</span>
-                            <p class="text-sm font-bold text-slate-600">Upload File</p>
+                            <p class="text-sm font-bold text-slate-600 dark:text-slate-300">Upload File</p>
                         </div>
                         <input id="fileInput" type="file" class="hidden" accept=".pdf, .png, .jpg, .jpeg" />
                     </label>
                 </div>
-                
-                <div id="fileStatus" class="text-sm text-slate-600 hidden text-center font-medium bg-slate-100 py-2 rounded-lg"></div>
 
-                <button type="submit" id="submitBtn" class="w-full text-white bg-slate-900 hover:bg-slate-800 font-medium rounded-lg text-sm px-5 py-3.5 transition shadow-md">
+                <div id="fileStatus" class="text-sm text-slate-600 dark:text-slate-300 hidden text-center font-medium bg-slate-100 dark:bg-slate-700 py-2 rounded-lg"></div>
+
+                <button type="submit" id="submitBtn" class="w-full text-white bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-3.5 transition shadow-md">
                     Process & Save to Vault
                 </button>
             </form>
 
-            <div id="loading" class="hidden mt-4 text-center text-blue-600 font-medium animate-pulse">Analyzing receipt with Gemini...</div>
-            <div id="successMsg" class="hidden mt-4 p-4 text-sm text-green-800 rounded-lg bg-green-50 border border-green-200"></div>
+            <div id="loading" class="hidden mt-4 text-center text-blue-600 dark:text-blue-400 font-medium animate-pulse">Analyzing receipt with Gemini...</div>
+            <div id="successMsg" class="hidden mt-4 p-4 text-sm text-green-800 dark:text-green-300 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800"></div>
         </div>
 
-        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+        <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h2 class="text-xl font-semibold">Tax Reporting</h2>
-                <div class="bg-blue-50 text-blue-800 px-4 py-2 rounded-lg font-bold text-lg border border-blue-100">
+                <h2 class="text-xl font-semibold text-slate-900 dark:text-white">Tax Reporting</h2>
+                <div class="bg-blue-50 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-4 py-2 rounded-lg font-bold text-lg border border-blue-100 dark:border-blue-800">
                     Total: RM <span id="reportTotal">0.00</span>
                 </div>
             </div>
-            
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6 bg-slate-50 dark:bg-slate-700 p-4 rounded-lg border border-slate-200 dark:border-slate-600">
                 <div class="col-span-2 md:col-span-1">
-                    <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Year</label>
-                    <select id="filterYear" class="w-full text-sm p-2 rounded border border-slate-300" onchange="applyFilters()">
+                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Year</label>
+                    <select id="filterYear" class="w-full text-sm p-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" onchange="applyFilters()">
                         <option value="All">All Years</option>
                         <option value="2026">2026</option>
                         <option value="2025">2025</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Owner</label>
-                    <select id="filterOwner" class="w-full text-sm p-2 rounded border border-slate-300" onchange="applyFilters()">
+                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Owner</label>
+                    <select id="filterOwner" class="w-full text-sm p-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" onchange="applyFilters()">
                         <option value="All">All Owners</option>
                         <option value="Raden">Raden</option>
                         <option value="Anis">Anis</option>
@@ -87,8 +97,8 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-500 uppercase mb-1">Category</label>
-                    <select id="filterCategory" class="w-full text-sm p-2 rounded border border-slate-300" onchange="applyFilters()">
+                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Category</label>
+                    <select id="filterCategory" class="w-full text-sm p-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" onchange="applyFilters()">
                         <option value="All">All Categories</option>
                         <option value="Lifestyle - Books/Internet/Sports">Lifestyle</option>
                         <option value="Medical Expenses">Medical Expenses</option>
@@ -100,49 +110,56 @@
             </div>
 
             <div class="flex justify-between items-center mb-4">
-                <p class="text-sm text-slate-500" id="recordCount">0 records</p>
-                <button onclick="downloadCSV()" class="text-sm bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-700 transition">
+                <p class="text-sm text-slate-500 dark:text-slate-400" id="recordCount">0 records</p>
+                <button onclick="downloadCSV()" class="text-sm bg-slate-800 dark:bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-700 dark:hover:bg-slate-500 transition">
                     📥 Download CSV
                 </button>
             </div>
-            
-            <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-100 rounded-lg">
-                <table class="w-full text-sm text-left text-slate-500 relative">
-                    <thead class="text-xs text-slate-700 uppercase bg-slate-100 sticky top-0 shadow-sm z-10">
+
+            <div class="overflow-x-auto max-h-[500px] overflow-y-auto border border-slate-100 dark:border-slate-700 rounded-lg">
+                <table class="w-full text-sm text-left text-slate-500 dark:text-slate-400 relative">
+                    <thead class="text-xs text-slate-700 dark:text-slate-300 uppercase bg-slate-100 dark:bg-slate-700 sticky top-0 shadow-sm z-10">
                         <tr>
-                            <th scope="col" class="px-4 py-3 cursor-pointer hover:bg-slate-200" onclick="sortTable('date')">Date ↕️</th>
+                            <th scope="col" class="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600" onclick="sortTable('date')">Date ↕️</th>
                             <th scope="col" class="px-4 py-3">Owner</th>
                             <th scope="col" class="px-4 py-3">Merchant</th>
                             <th scope="col" class="px-4 py-3">Items</th>
                             <th scope="col" class="px-4 py-3">Category</th>
-                            <th scope="col" class="px-4 py-3 text-right cursor-pointer hover:bg-slate-200" onclick="sortTable('amount')">Amount ↕️</th>
+                            <th scope="col" class="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600" onclick="sortTable('amount')">Amount ↕️</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <script>
-        // const API_BASE = "http://localhost:8000/api";
-        const API_BASE = "/api"; // For production when served by FastAPI
-        let allData = []; 
-        let filteredData = []; 
+        const API_BASE = "/api";
+        let allData = [];
+        let filteredData = [];
         let sortAscending = false;
-        let activeFile = null; // Store the file whether it comes from camera or upload
+        let activeFile = null;
+
+        // Theme toggle
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+        }
+
+        // Set correct icon on load
+        document.getElementById('themeIcon').textContent = document.documentElement.classList.contains('dark') ? '☀️' : '🌙';
 
         // Handle File Selection (Both Camera and Upload)
         function handleFileSelection(e) {
             const file = e.target.files[0];
             if (!file) return;
-            
+
             activeFile = file;
             const statusDiv = document.getElementById('fileStatus');
-            
-            // If it's from the camera, it usually has a generic name like "image.jpg". 
-            // We'll show a friendly message.
+
             if (e.target.id === 'cameraInput') {
                 statusDiv.innerHTML = `📸 <strong>Photo captured and ready to process!</strong>`;
             } else {
@@ -157,9 +174,9 @@
         // Handle Form Submission
         document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const owner = document.getElementById('ownerInput').value;
-            
+
             if (!activeFile) {
                 alert("Please take a photo or upload a file first.");
                 return;
@@ -168,7 +185,7 @@
             const submitBtn = document.getElementById('submitBtn');
             const loading = document.getElementById('loading');
             const successMsg = document.getElementById('successMsg');
-            
+
             submitBtn.disabled = true;
             loading.classList.remove('hidden');
             successMsg.classList.add('hidden');
@@ -184,12 +201,11 @@
                 if (response.ok) {
                     successMsg.innerHTML = `<strong>✅ Saved to Vault!</strong><br> ${result.data.merchant_name} (RM ${result.data.total_amount})`;
                     successMsg.classList.remove('hidden');
-                    
-                    // Reset everything
+
                     document.getElementById('uploadForm').reset();
                     activeFile = null;
                     document.getElementById('fileStatus').classList.add('hidden');
-                    fetchReceipts(); // Refresh the dashboard
+                    fetchReceipts();
                 } else {
                     alert("Error: " + result.detail);
                 }
@@ -208,7 +224,7 @@
                 const result = await response.json();
                 if (result.status === "success") {
                     allData = result.data;
-                    applyFilters(); 
+                    applyFilters();
                 }
             } catch (error) {
                 console.error("Failed to load receipts", error);
@@ -257,15 +273,15 @@
                 const amt = parseFloat(item.total_amount) || 0;
                 total += amt;
                 return `
-                    <tr class="bg-white border-b hover:bg-slate-50">
+                    <tr class="bg-white dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700">
                         <td class="px-4 py-3 whitespace-nowrap">${item.receipt_date || '-'}</td>
-                        <td class="px-4 py-3 font-semibold text-slate-700">${item.owner_name || '-'}</td>
-                        <td class="px-4 py-3 font-medium text-slate-900">${item.merchant_name || 'Unknown'}</td>
-                        <td class="px-4 py-3 text-slate-600 max-w-[150px] truncate" title="${item.purchased_items}">${item.purchased_items || '-'}</td>
+                        <td class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-300">${item.owner_name || '-'}</td>
+                        <td class="px-4 py-3 font-medium text-slate-900 dark:text-white">${item.merchant_name || 'Unknown'}</td>
+                        <td class="px-4 py-3 text-slate-600 dark:text-slate-400 max-w-[150px] truncate" title="${item.purchased_items}">${item.purchased_items || '-'}</td>
                         <td class="px-4 py-3">
-                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">${item.tax_category || 'Other'}</span>
+                            <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 text-xs font-medium px-2 py-0.5 rounded">${item.tax_category || 'Other'}</span>
                         </td>
-                        <td class="px-4 py-3 text-right font-bold text-slate-900">${amt.toFixed(2)}</td>
+                        <td class="px-4 py-3 text-right font-bold text-slate-900 dark:text-white">${amt.toFixed(2)}</td>
                     </tr>
                 `;
             }).join('');
