@@ -1,7 +1,8 @@
 import os
 import json
 import tempfile
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Body
+from typing import Any
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from supabase import create_client, Client
@@ -122,6 +123,70 @@ def get_recent_receipts(limit: int = 1000):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+# --- 4. UPDATE A RECEIPT ---
+@app.patch("/api/receipts/{receipt_id}")
+def update_receipt(receipt_id: str, updates: dict[str, Any] = Body(...)):
+    try:
+        # Fetch current record for before/after diff
+        before = supabase.table("tax_receipts").select("*").eq("id", receipt_id).single().execute()
+        before_data = before.data or {}
+
+        response = supabase.table("tax_receipts").update(updates).eq("id", receipt_id).execute()
+
+        # Log only the fields that actually changed
+        changed_fields = {k: {"before": before_data.get(k), "after": v} for k, v in updates.items() if before_data.get(k) != v}
+        supabase.table("audit_logs").insert({
+            "action": "UPDATE",
+            "receipt_id": receipt_id,
+            "merchant_name": before_data.get("merchant_name"),
+            "changes": changed_fields
+        }).execute()
+
+        return {"status": "success", "data": response.data[0]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- 5. DELETE A RECEIPT ---
+@app.delete("/api/receipts/{receipt_id}")
+def delete_receipt(receipt_id: str):
+    try:
+        # Fetch full record before deleting
+        record = supabase.table("tax_receipts").select("*").eq("id", receipt_id).single().execute()
+        record_data = record.data or {}
+        file_path = record_data.get("file_path")
+
+        # Delete DB record
+        supabase.table("tax_receipts").delete().eq("id", receipt_id).execute()
+
+        # Delete file from storage if it exists
+        if file_path:
+            supabase.storage.from_("receipts").remove([file_path])
+
+        # Log the deletion with full snapshot
+        supabase.table("audit_logs").insert({
+            "action": "DELETE",
+            "receipt_id": receipt_id,
+            "merchant_name": record_data.get("merchant_name"),
+            "changes": {"deleted_record": record_data}
+        }).execute()
+
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/receipt-url/")
+def get_receipt_url(file_path: str):
+    try:
+        supabase_url = os.environ["SUPABASE_URL"].rstrip("/")
+        public_url = f"{supabase_url}/storage/v1/object/public/receipts/{file_path}"
+        return {"url": public_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/")
 async def serve_frontend():
     return FileResponse("index.html")
+
+@app.get("/ringgit.png")
+async def serve_icon():
+    return FileResponse("ringgit.png", media_type="image/png")

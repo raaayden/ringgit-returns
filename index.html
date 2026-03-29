@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LHDN Receipt Vault</title>
+    <title>Ringgit & Returns</title>
     <script>
         // Apply saved theme before page renders to avoid flash
         if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         }
     </script>
+    <link rel="icon" type="image/png" href="/ringgit.png" />
+    <link rel="apple-touch-icon" href="/ringgit.png" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -23,7 +25,7 @@
             <button id="themeToggle" onclick="toggleTheme()" class="absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition text-lg" title="Toggle dark mode">
                 <span id="themeIcon">🌙</span>
             </button>
-            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Receipt Vault <span class="text-blue-600">🧾</span></h1>
+            <h1 class="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Ringits & Returns <span class="text-blue-600">🧾</span></h1>
             <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm md:text-base">Secure LHDN tax bookkeeping</p>
         </header>
 
@@ -100,13 +102,26 @@
                     <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Category</label>
                     <select id="filterCategory" class="w-full text-sm p-2 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white" onchange="applyFilters()">
                         <option value="All">All Categories</option>
-                        <option value="Lifestyle - Books/Internet/Sports">Lifestyle</option>
                         <option value="Medical Expenses">Medical Expenses</option>
                         <option value="Education">Education</option>
                         <option value="Donations">Donations</option>
                         <option value="Other/Uncategorized">Other</option>
+                        <option value="Lifestyle - Books/Internet/Sports/Electronics">Lifestyle - Books/Internet/Sports/Electronics</option>
+                        <option value="Dentistry">Dentistry</option>
+                        <option value="Childcare Equipment">Childcare Equipment</option>
+                        <option value="Nursery">Nursery</option>
+                        <option value="Life Insurance">Life Insurance</option>
                     </select>
                 </div>
+            </div>
+
+            <!-- LHDN Relief Progress Bars -->
+            <div class="mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">Relief Cap Utilisation</h3>
+                    <span class="text-xs text-slate-400 dark:text-slate-500">Based on active filters</span>
+                </div>
+                <div id="reliefBars" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
             </div>
 
             <div class="flex justify-between items-center mb-4">
@@ -126,6 +141,7 @@
                             <th scope="col" class="px-4 py-3">Items</th>
                             <th scope="col" class="px-4 py-3">Category</th>
                             <th scope="col" class="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600" onclick="sortTable('amount')">Amount ↕️</th>
+                            <th scope="col" class="px-4 py-3 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="tableBody">
@@ -135,9 +151,113 @@
         </div>
     </div>
 
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 items-center pointer-events-none"></div>
+
+    <!-- Edit Receipt Modal -->
+    <div id="editModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeEditModal()"></div>
+        <div class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+                <h3 class="font-semibold text-slate-900 dark:text-white">Edit Receipt</h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-2xl leading-none transition">&times;</button>
+            </div>
+            <form id="editForm" class="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
+                <input type="hidden" id="editId" />
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Date</label>
+                        <input id="editDate" type="date" class="w-full text-sm p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Total Amount (RM)</label>
+                        <input id="editAmount" type="number" step="0.01" min="0" class="w-full text-sm p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Merchant Name</label>
+                    <input id="editMerchant" type="text" class="w-full text-sm p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Owner</label>
+                    <select id="editOwner" class="w-full text-sm p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="Raden">Raden</option>
+                        <option value="Anis">Anis</option>
+                        <option value="Joint/Household">Joint / Household</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Category</label>
+                    <select id="editCategory" class="w-full text-sm p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="Lifestyle - Books/Internet/Sports/Electronics">Lifestyle - Books/Internet/Sports/Electronics</option>
+                        <option value="Medical Expenses">Medical Expenses</option>
+                        <option value="Dentistry">Dentistry</option>
+                        <option value="Childcare Equipment">Childcare Equipment</option>
+                        <option value="Nursery">Nursery</option>
+                        <option value="Life Insurance">Life Insurance</option>
+                        <option value="Education">Education</option>
+                        <option value="Donations">Donations</option>
+                        <option value="Zakat">Zakat</option>
+                        <option value="Other/Uncategorized">Other/Uncategorized</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 uppercase mb-1">Items (comma-separated)</label>
+                    <input id="editItems" type="text" class="w-full text-sm p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeEditModal()" class="flex-1 text-sm px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">Cancel</button>
+                    <button type="submit" id="editSaveBtn" class="flex-1 text-sm px-4 py-2.5 rounded-lg bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-700 transition font-medium">Save Changes</button>
+                </div>
+                <div id="editError" class="hidden text-sm text-red-500 text-center"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Receipt Viewer Modal -->
+    <div id="receiptModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeReceiptModal()"></div>
+        <div class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+                <div>
+                    <h3 class="font-semibold text-slate-900 dark:text-white" id="modalTitle">Receipt</h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Valid for 2 minutes</p>
+                </div>
+                <button onclick="closeReceiptModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-2xl leading-none transition">&times;</button>
+            </div>
+            <div id="modalBody" class="flex-1 overflow-auto p-4 flex items-center justify-center min-h-[300px]">
+                <p class="text-slate-400 animate-pulse">Loading receipt...</p>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const API_BASE = "/api";
-        // const API_BASE = "http://localhost:8000/api"; // keep this as is for local development, change to "/api" when deploying with FastAPI's static file serving
+        // const API_BASE = "/api";
+        const API_BASE = "http://localhost:8000/api"; // keep this as is for local development, change to "/api" when deploying with FastAPI's static file serving
+        // Toast Notifications
+        function showToast(message, type = 'info') {
+            const colors = {
+                success: 'bg-emerald-500',
+                error:   'bg-red-500',
+                warning: 'bg-amber-400',
+                info:    'bg-slate-700 dark:bg-slate-600',
+            };
+            const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium max-w-sm ${colors[type]} translate-y-[-20px] opacity-0 transition-all duration-300`;
+            toast.innerHTML = `<span>${icons[type]}</span><span>${message}</span>`;
+            document.getElementById('toastContainer').appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.style.transform = 'translateY(0)';
+                toast.style.opacity = '1';
+            });
+            setTimeout(() => {
+                toast.style.transform = 'translateY(-20px)';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
         let allData = [];
         let filteredData = [];
         let sortAscending = false;
@@ -179,7 +299,7 @@
             const owner = document.getElementById('ownerInput').value;
 
             if (!activeFile) {
-                alert("Please take a photo or upload a file first.");
+                showToast("Please take a photo or upload a file first.", "warning");
                 return;
             }
 
@@ -202,16 +322,17 @@
                 if (response.ok) {
                     successMsg.innerHTML = `<strong>✅ Saved to Vault!</strong><br> ${result.data.merchant_name} (RM ${result.data.total_amount})`;
                     successMsg.classList.remove('hidden');
+                    showToast(`Saved — ${result.data.merchant_name} (RM ${result.data.total_amount})`, "success");
 
                     document.getElementById('uploadForm').reset();
                     activeFile = null;
                     document.getElementById('fileStatus').classList.add('hidden');
                     fetchReceipts();
                 } else {
-                    alert("Error: " + result.detail);
+                    showToast("Error: " + result.detail, "error");
                 }
             } catch (error) {
-                alert("Connection failed. Is your FastAPI server running?");
+                showToast("Connection failed. Is the server running?", "error");
             } finally {
                 submitBtn.disabled = false;
                 loading.classList.add('hidden');
@@ -245,6 +366,7 @@
                 const matchesCategory = categoryFilter === "All" || (item.tax_category && item.tax_category.includes(categoryFilter.split(' ')[0]));
                 return matchesYear && matchesOwner && matchesCategory;
             });
+            renderReliefBars();
             renderTable();
         }
 
@@ -265,6 +387,51 @@
             renderTable();
         }
 
+        // LHDN Relief Caps (YA 2025)
+        const RELIEF_CAPS = {
+            'Lifestyle - Books/Internet/Sports/Electronics': { cap: 2500, label: 'Lifestyle' },
+            'Medical Expenses': { cap: 10000, label: 'Medical Expenses' },
+            'Dentistry': { cap: 1000, label: 'Dentistry' },
+            'Childcare Equipment': { cap: 3000, label: 'Childcare Equipment' },
+            'Nursery': { cap: 3000, label: 'Nursery / Childcare Fees' },
+            'Life Insurance': { cap: 3000, label: 'Life Insurance' },
+            'Education': { cap: 7000, label: 'Education (Self)' },
+        };
+
+        function renderReliefBars() {
+            const totals = {};
+            for (const key of Object.keys(RELIEF_CAPS)) totals[key] = 0;
+
+            filteredData.forEach(item => {
+                const amt = parseFloat(item.total_amount) || 0;
+                if (RELIEF_CAPS[item.tax_category]) totals[item.tax_category] += amt;
+            });
+
+            document.getElementById('reliefBars').innerHTML = Object.entries(RELIEF_CAPS).map(([key, { cap, label }]) => {
+                const spent = totals[key] || 0;
+                const pct = Math.min((spent / cap) * 100, 100);
+                const remaining = Math.max(cap - spent, 0);
+                const color = pct >= 100 ? 'bg-red-500' : pct >= 75 ? 'bg-amber-400' : 'bg-emerald-500';
+                const textColor = pct >= 100 ? 'text-red-600 dark:text-red-400' : pct >= 75 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
+                const statusLabel = pct >= 100 ? 'Maxed out' : `RM ${remaining.toFixed(0)} left`;
+                return `
+                    <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3">
+                        <div class="flex justify-between items-baseline mb-1.5">
+                            <span class="text-xs font-medium text-slate-700 dark:text-slate-300">${label}</span>
+                            <span class="text-xs ${textColor} font-semibold">${statusLabel}</span>
+                        </div>
+                        <div class="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2 mb-1.5">
+                            <div class="${color} h-2 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-400 dark:text-slate-500">
+                            <span>RM ${spent.toFixed(2)} spent</span>
+                            <span>Cap: RM ${cap.toLocaleString()}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
         // Render the Table & Calculate Totals
         function renderTable() {
             const tbody = document.getElementById('tableBody');
@@ -283,6 +450,11 @@
                             <span class="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 text-xs font-medium px-2 py-0.5 rounded">${item.tax_category || 'Other'}</span>
                         </td>
                         <td class="px-4 py-3 text-right font-bold text-slate-900 dark:text-white">${amt.toFixed(2)}</td>
+                        <td class="px-4 py-3 text-center whitespace-nowrap">
+                            ${item.file_path ? `<button onclick="openReceiptModal('${item.file_path}', '${(item.merchant_name || 'Receipt').replace(/'/g, "\\'")}', '${item.receipt_date || ''}')" class="text-slate-400 hover:text-blue-500 transition text-base" title="View receipt">🔍</button>` : '<span class="text-slate-300 dark:text-slate-600 text-base">🔍</span>'}
+                            <button onclick="openEditModal('${item.id}')" class="text-slate-400 hover:text-amber-500 transition text-base ml-2" title="Edit receipt">✏️</button>
+                            <button onclick="deleteReceipt('${item.id}', '${(item.merchant_name || 'this receipt').replace(/'/g, "\\'")}')" class="text-slate-400 hover:text-red-500 transition text-base ml-2" title="Delete receipt">🗑️</button>
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -293,7 +465,7 @@
 
         // Generate CSV Report
         function downloadCSV() {
-            if (filteredData.length === 0) return alert("No data to export!");
+            if (filteredData.length === 0) return showToast("No data to export!", "warning");
             const headers = ["Date", "Owner", "Merchant", "Items", "Category", "Amount (RM)"];
             const csvRows = [headers.join(",")];
 
@@ -320,6 +492,110 @@
             a.click();
             document.body.removeChild(a);
         }
+
+        // Edit Modal
+        function openEditModal(id) {
+            const item = allData.find(r => r.id === id);
+            if (!item) return;
+
+            document.getElementById('editId').value = item.id;
+            document.getElementById('editDate').value = item.receipt_date || '';
+            document.getElementById('editAmount').value = item.total_amount || '';
+            document.getElementById('editMerchant').value = item.merchant_name || '';
+            document.getElementById('editOwner').value = item.owner_name || 'Raden';
+            document.getElementById('editCategory').value = item.tax_category || 'Other/Uncategorized';
+            document.getElementById('editItems').value = item.purchased_items || '';
+            document.getElementById('editError').classList.add('hidden');
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        async function deleteReceipt(id, merchantName) {
+            if (!confirm(`Delete "${merchantName}"?\n\nThis will permanently remove the record and the file from storage.`)) return;
+            try {
+                const res = await fetch(`${API_BASE}/receipts/${id}`, { method: 'DELETE' });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.detail);
+                fetchReceipts();
+            } catch (err) {
+                showToast(`Delete failed: ${err.message}`, "error");
+            }
+        }
+
+        document.getElementById('editForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const saveBtn = document.getElementById('editSaveBtn');
+            const errorDiv = document.getElementById('editError');
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            errorDiv.classList.add('hidden');
+
+            const updates = {
+                receipt_date: document.getElementById('editDate').value || null,
+                merchant_name: document.getElementById('editMerchant').value,
+                total_amount: parseFloat(document.getElementById('editAmount').value) || null,
+                owner_name: document.getElementById('editOwner').value,
+                tax_category: document.getElementById('editCategory').value,
+                purchased_items: document.getElementById('editItems').value,
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/receipts/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates)
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.detail);
+
+                closeEditModal();
+                fetchReceipts();
+            } catch (err) {
+                errorDiv.textContent = `Error: ${err.message}`;
+                errorDiv.classList.remove('hidden');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
+            }
+        });
+
+        // Receipt Modal
+        async function openReceiptModal(filePath, merchantName, receiptDate) {
+            const modal = document.getElementById('receiptModal');
+            const modalBody = document.getElementById('modalBody');
+            const modalTitle = document.getElementById('modalTitle');
+
+            modalTitle.textContent = `${merchantName}${receiptDate ? ' · ' + receiptDate : ''}`;
+            modalBody.innerHTML = `<p class="text-slate-400 animate-pulse">Loading receipt...</p>`;
+            modal.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`${API_BASE}/receipt-url/?file_path=${encodeURIComponent(filePath)}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail);
+
+                const isPdf = filePath.toLowerCase().endsWith('.pdf');
+                if (isPdf) {
+                    modalBody.innerHTML = `<iframe src="${data.url}" class="w-full h-[70vh] rounded-lg border-0"></iframe>`;
+                } else {
+                    modalBody.innerHTML = `<img src="${data.url}" class="max-w-full max-h-[70vh] object-contain rounded-lg" alt="Receipt" onerror="this.parentElement.innerHTML='<p class=\\'text-red-500 text-sm\\'>Failed to load image. Make sure the bucket is set to Public in Supabase.</p>'" />`;
+                }
+            } catch (err) {
+                modalBody.innerHTML = `<p class="text-red-500 text-sm">Error: ${err.message}</p>`;
+            }
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('receiptModal').classList.add('hidden');
+            document.getElementById('modalBody').innerHTML = '';
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeReceiptModal(); closeEditModal(); } });
 
         // Initialize
         fetchReceipts();
