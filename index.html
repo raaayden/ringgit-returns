@@ -347,8 +347,11 @@
                 if (result.status === "success") {
                     allData = result.data;
                     applyFilters();
+                } else {
+                    showToast("Failed to load receipts: " + (result.detail || "unknown error"), "error");
                 }
             } catch (error) {
+                showToast("Cannot reach server: " + error.message, "error");
                 console.error("Failed to load receipts", error);
             }
         }
