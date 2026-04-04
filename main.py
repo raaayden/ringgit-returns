@@ -32,13 +32,18 @@ model = genai.GenerativeModel('gemini-2.5-flash',
                               generation_config={"response_mime_type": "application/json"})
 
 EXTRACTION_PROMPT = """
-Analyze this receipt and extract the following information into a strict JSON format. 
-If a value is not found, use null.
+ct as a strict Malaysian LHDN tax auditor. Analyze the line items on this receipt. 
+You must FILTER OUT non-eligible items (like everyday groceries, meals, standard clothing, etc.). 
+Only process items that explicitly qualify for standard LHDN tax reliefs (e.g., Books, Tech/Computers, Sports equipment, Medical, Childcare).
+
+Calculate the `total_amount` by summing the price of ONLY the eligible items. DO NOT just grab the receipt's grand total if it contains mixed items.
+
+Extract the following into strict JSON format. If no eligible items are found, set total_amount to 0.
 The JSON keys must be exactly:
 - receipt_date (format: YYYY-MM-DD)
 - merchant_name (string)
-- total_amount (number, do not include currency symbols)
-- tax_category (string, MUST be exactly one of the following: 
+- total_amount (number, sum of ONLY the eligible items. Do not include currency symbols)
+- tax_category (string, MUST be exactly one of the following based on the eligible items:
     'Lifestyle - Books/Internet/Sports/Electronics', 
     'Medical Expenses',
     'Dentistry', 
@@ -49,7 +54,7 @@ The JSON keys must be exactly:
     'Donations', 
     'Zakat',
     'Other/Uncategorized')
-- purchased_items (string, a brief comma-separated list of the main items or services purchased. Keep it concise.)
+- purchased_items (string, a brief comma-separated list of ONLY the eligible items. Ignore the rest.)
 """
 
 # --- 2. THE PIPELINE ENDPOINT ---
