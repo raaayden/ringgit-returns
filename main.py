@@ -3,6 +3,7 @@ import json
 import tempfile
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Body
 from typing import Any
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from supabase import create_client, Client
@@ -56,6 +57,27 @@ The JSON keys must be exactly:
     'Other/Uncategorized')
 - purchased_items (string, a brief comma-separated list of ONLY the eligible items. Ignore the rest.)
 """
+
+# --- 1A. AUTH MODEL ---
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+# --- 1B. AUTH ENDPOINT ---
+@app.post("/api/auth/login")
+async def login(request: LoginRequest):
+    try:
+        # Use Supabase Auth to sign in
+        response = supabase.auth.sign_in_with_password({
+            "email": request.email,
+            "password": request.password
+        })
+        return {
+            "token": response.session.access_token,
+            "user": response.user.email if response.user else None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
 # --- 2. THE PIPELINE ENDPOINT ---
 @app.post("/api/upload-receipt/")
