@@ -29,7 +29,7 @@ supabase: Client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABAS
 
 # Setup Gemini
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-model = genai.GenerativeModel('gemini-2.5-flash', 
+model = genai.GenerativeModel('gemini-3.5-flash-lite', 
                               generation_config={"response_mime_type": "application/json"})
 
 EXTRACTION_PROMPT = """
