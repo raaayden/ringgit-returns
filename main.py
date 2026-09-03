@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from supabase import create_client, Client
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 # --- 1. INITIALIZATION ---
@@ -28,7 +29,8 @@ app.add_middleware(
 supabase: Client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
 
 # Setup Gemini
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+# Initialize the new Client (replaces genai.configure)
+gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 model = genai.GenerativeModel('gemini-3.1-flash-lite', 
                               generation_config={"response_mime_type": "application/json"})
 
@@ -82,41 +84,42 @@ async def login(request: LoginRequest):
 # --- 2. THE PIPELINE ENDPOINT ---
 @app.post("/api/upload-receipt/")
 async def upload_receipt(file: UploadFile = File(...), owner_name: str = Form(...)):
-    # Validate file type
     allowed_types = ["image/jpeg", "image/png", "image/jpg", "application/pdf"]
     if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, and PDF are allowed.")
+        raise HTTPException(status_code=400, detail="Invalid file type.")
 
     file_extension = file.filename.split('.')[-1]
-    
-    # Read the file data into memory
     file_bytes = await file.read()
 
-    # Create a temporary file for Gemini and Supabase to process
     with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as tmp_file:
         tmp_file.write(file_bytes)
         tmp_file_path = tmp_file.name
 
     try:
-        # --- EXTRACT & TRANSFORM (Gemini) ---
-        gemini_file = genai.upload_file(path=tmp_file_path)
+        # --- EXTRACT & TRANSFORM (NEW SDK SYNTAX) ---
+        # 1. Upload file
+        gemini_file = gemini_client.files.upload(file=tmp_file_path)
         
-        # 💡 FIX 1: Wait for PDF processing. Gemini throws an error if you query a PDF before it's ready.
+        # 2. Wait for processing (Crucial for PDFs)
         while gemini_file.state.name == "PROCESSING":
-            print(f"Waiting for Gemini to process document...")
             time.sleep(2)
-            gemini_file = genai.get_file(gemini_file.name)
+            gemini_file = gemini_client.files.get(name=gemini_file.name)
             
         if gemini_file.state.name == "FAILED":
-            raise Exception("Gemini backend failed to process the file.")
+            raise Exception("Gemini failed to process the document.")
 
-        response = model.generate_content([EXTRACTION_PROMPT, gemini_file])
+        # 3. Generate content using the new client.models format
+        response = gemini_client.models.generate_content(
+            model='gemini-1.5-flash', # Or your preferred model
+            contents=[EXTRACTION_PROMPT, gemini_file],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            )
+        )
         extracted_data = json.loads(response.text)
         
         # --- LOAD (Supabase) ---
         safe_filename = f"{os.urandom(8).hex()}_{file.filename}"
-        
-        # 💡 FIX 2: Read into raw bytes before uploading to Supabase to prevent 'closed file' errors
         with open(tmp_file_path, "rb") as f:
             file_bytes_for_db = f.read()
             
@@ -126,7 +129,6 @@ async def upload_receipt(file: UploadFile = File(...), owner_name: str = Form(..
             file_options={"content-type": file.content_type}
         )
         
-        # 2. Insert structured metadata to DB
         db_record = {
             "receipt_date": extracted_data.get("receipt_date"),
             "merchant_name": extracted_data.get("merchant_name"),
@@ -139,17 +141,16 @@ async def upload_receipt(file: UploadFile = File(...), owner_name: str = Form(..
         
         db_response = supabase.table("tax_receipts").insert(db_record).execute()
         
-        # Cleanup Gemini file
-        genai.delete_file(gemini_file.name)
+        # 4. Cleanup file (NEW SDK SYNTAX)
+        gemini_client.files.delete(name=gemini_file.name)
 
         return {
             "status": "success",
-            "message": "Receipt processed and stored safely.",
+            "message": "Receipt processed successfully.",
             "data": db_response.data[0]
         }
 
     except Exception as e:
-        # 💡 FIX 3: Print the raw error to your terminal so you aren't flying blind!
         print(f"\n🔥 RAW PIPELINE ERROR: {repr(e)}\n")
         raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
         
