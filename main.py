@@ -1,6 +1,7 @@
 import os
 import json
 import tempfile
+from time import time
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Body
 from typing import Any
 from pydantic import BaseModel
@@ -31,8 +32,7 @@ supabase: Client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABAS
 # Setup Gemini
 # Initialize the new Client (replaces genai.configure)
 gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-model = genai.GenerativeModel('gemini-3.1-flash-lite', 
-                              generation_config={"response_mime_type": "application/json"})
+GEMINI_MODEL          = "gemini-3.5-flash-lite"
 
 EXTRACTION_PROMPT = """
 ct as a strict Malaysian LHDN tax auditor. Analyze the line items on this receipt. 
@@ -110,7 +110,7 @@ async def upload_receipt(file: UploadFile = File(...), owner_name: str = Form(..
 
         # 3. Generate content using the new client.models format
         response = gemini_client.models.generate_content(
-            model='gemini-1.5-flash', # Or your preferred model
+            model=GEMINI_MODEL, # Or your preferred model
             contents=[EXTRACTION_PROMPT, gemini_file],
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
