@@ -29,7 +29,7 @@ supabase: Client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABAS
 
 # Setup Gemini
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-model = genai.GenerativeModel('gemini-3.5-flash-lite', 
+model = genai.GenerativeModel('gemini-3.1-flash-lite', 
                               generation_config={"response_mime_type": "application/json"})
 
 EXTRACTION_PROMPT = """
@@ -100,18 +100,31 @@ async def upload_receipt(file: UploadFile = File(...), owner_name: str = Form(..
     try:
         # --- EXTRACT & TRANSFORM (Gemini) ---
         gemini_file = genai.upload_file(path=tmp_file_path)
+        
+        # 💡 FIX 1: Wait for PDF processing. Gemini throws an error if you query a PDF before it's ready.
+        while gemini_file.state.name == "PROCESSING":
+            print(f"Waiting for Gemini to process document...")
+            time.sleep(2)
+            gemini_file = genai.get_file(gemini_file.name)
+            
+        if gemini_file.state.name == "FAILED":
+            raise Exception("Gemini backend failed to process the file.")
+
         response = model.generate_content([EXTRACTION_PROMPT, gemini_file])
         extracted_data = json.loads(response.text)
         
         # --- LOAD (Supabase) ---
-        # 1. Upload physical file to Storage
         safe_filename = f"{os.urandom(8).hex()}_{file.filename}"
+        
+        # 💡 FIX 2: Read into raw bytes before uploading to Supabase to prevent 'closed file' errors
         with open(tmp_file_path, "rb") as f:
-            supabase.storage.from_("receipts").upload(
-                path=safe_filename, 
-                file=f, 
-                file_options={"content-type": file.content_type}
-            )
+            file_bytes_for_db = f.read()
+            
+        supabase.storage.from_("receipts").upload(
+            path=safe_filename, 
+            file=file_bytes_for_db, 
+            file_options={"content-type": file.content_type}
+        )
         
         # 2. Insert structured metadata to DB
         db_record = {
@@ -136,6 +149,8 @@ async def upload_receipt(file: UploadFile = File(...), owner_name: str = Form(..
         }
 
     except Exception as e:
+        # 💡 FIX 3: Print the raw error to your terminal so you aren't flying blind!
+        print(f"\n🔥 RAW PIPELINE ERROR: {repr(e)}\n")
         raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
         
     finally:
